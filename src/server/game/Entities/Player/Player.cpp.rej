@@ -1,0 +1,16 @@
+***************
+*** 12561,12566 ****
+  {
+      if (Item* it = GetItemByPos(bag, slot))
+      {
+          ItemRemovedQuestCheck(it->GetEntry(), it->GetCount());
+          RemoveItem(bag, slot, update);
+          it->SetNotRefundable(this, false);
+--- 12565,12571 ----
+  {
+      if (Item* it = GetItemByPos(bag, slot))
+      {
++         sTransmogrification->DeleteFakeEntry(this, it);
+          ItemRemovedQuestCheck(it->GetEntry(), it->GetCount());
+          RemoveItem(bag, slot, update);
+          it->SetNotRefundable(this, false);

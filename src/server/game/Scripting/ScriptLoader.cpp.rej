@@ -1,0 +1,15 @@
+***************
+*** 696,700 ****
+  #ifdef SCRIPTS
+      /* This is where custom scripts should be added. */
+  
+  #endif
+  }
+--- 698,704 ----
+  #ifdef SCRIPTS
+      /* This is where custom scripts should be added. */
+  
++     AddSC_PWS_Transmogrification();
++     AddSC_CS_Transmogrification();
+  #endif
+  }

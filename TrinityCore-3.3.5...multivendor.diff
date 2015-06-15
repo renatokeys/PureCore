@@ -1,0 +1,217 @@
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+index 275dbf9..5f36a68 100644
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -14249,7 +14249,7 @@ void Player::PrepareGossipMenu(WorldObject* source, uint32 menuId /*= 0*/, bool
+                     break;
+                 case GOSSIP_OPTION_VENDOR:
+                 {
+-                    VendorItemData const* vendorItems = creature->GetVendorItems();
++                    VendorItemData const* vendorItems = itr->second.ActionMenuId ? sObjectMgr->GetNpcVendorItemList(itr->second.ActionMenuId) : creature->GetVendorItems();
+                     if (!vendorItems || vendorItems->Empty())
+                     {
+                         TC_LOG_ERROR("sql.sql", "Creature %s (Entry: %u GUID: %u DB GUID: %u) has UNIT_NPC_FLAG_VENDOR set but has an empty trading item list.", creature->GetName().c_str(), creature->GetEntry(), creature->GetGUIDLow(), creature->GetDBTableGUIDLow());
+@@ -14460,7 +14460,7 @@ void Player::OnGossipSelect(WorldObject* source, uint32 gossipListId, uint32 men
+             break;
+         case GOSSIP_OPTION_VENDOR:
+         case GOSSIP_OPTION_ARMORER:
+-            GetSession()->SendListInventory(guid);
++            GetSession()->SendListInventory(guid, menuItemData->GossipActionMenuId);
+             break;
+         case GOSSIP_OPTION_STABLEPET:
+             GetSession()->SendStablePet(guid);
+@@ -21501,7 +21501,11 @@ bool Player::BuyItemFromVendorSlot(ObjectGuid vendorguid, uint32 vendorslot, uin
+         return false;
+     }
+ 
+-    VendorItemData const* vItems = creature->GetVendorItems();
++    uint32 currentVendor = GetSession()->GetCurrentVendor();
++    if (currentVendor && vendorguid != PlayerTalkClass->GetGossipMenu().GetSenderGUID())
++        return false; // Cheating
++
++    VendorItemData const* vItems = currentVendor ? sObjectMgr->GetNpcVendorItemList(currentVendor) : creature->GetVendorItems();
+     if (!vItems || vItems->Empty())
+     {
+         SendBuyError(BUY_ERR_CANT_FIND_ITEM, creature, item, 0);
+diff --git a/src/server/game/Globals/ObjectMgr.cpp b/src/server/game/Globals/ObjectMgr.cpp
+index e540824..89202f0 100644
+--- a/src/server/game/Globals/ObjectMgr.cpp
++++ b/src/server/game/Globals/ObjectMgr.cpp
+@@ -8503,6 +8503,7 @@ bool ObjectMgr::RemoveVendorItem(uint32 entry, uint32 item, bool persist /*= tru
+ 
+ bool ObjectMgr::IsVendorItemValid(uint32 vendor_entry, uint32 item_id, int32 maxcount, uint32 incrtime, uint32 ExtendedCost, Player* player, std::set<uint32>* skip_vendors, uint32 ORnpcflag) const
+ {
++    /*
+     CreatureTemplate const* cInfo = sObjectMgr->GetCreatureTemplate(vendor_entry);
+     if (!cInfo)
+     {
+@@ -8527,6 +8528,7 @@ bool ObjectMgr::IsVendorItemValid(uint32 vendor_entry, uint32 item_id, int32 max
+         }
+         return false;
+     }
++    */
+ 
+     if (!sObjectMgr->GetItemTemplate(item_id))
+     {
+diff --git a/src/server/game/Handlers/ItemHandler.cpp b/src/server/game/Handlers/ItemHandler.cpp
+index 672e1c6..f7168bd 100644
+--- a/src/server/game/Handlers/ItemHandler.cpp
++++ b/src/server/game/Handlers/ItemHandler.cpp
+@@ -726,7 +726,7 @@ void WorldSession::HandleListInventoryOpcode(WorldPacket& recvData)
+     SendListInventory(guid);
+ }
+ 
+-void WorldSession::SendListInventory(ObjectGuid vendorGuid)
++void WorldSession::SendListInventory(ObjectGuid vendorGuid, uint32 vendorEntry)
+ {
+     TC_LOG_DEBUG("network", "WORLD: Sent SMSG_LIST_INVENTORY");
+ 
+@@ -746,7 +746,7 @@ void WorldSession::SendListInventory(ObjectGuid vendorGuid)
+     if (vendor->HasUnitState(UNIT_STATE_MOVING))
+         vendor->StopMoving();
+ 
+-    VendorItemData const* items = vendor->GetVendorItems();
++    VendorItemData const* items = vendorEntry ? sObjectMgr->GetNpcVendorItemList(vendorEntry) : vendor->GetVendorItems();
+     if (!items)
+     {
+         WorldPacket data(SMSG_LIST_INVENTORY, 8 + 1 + 1);
+@@ -757,6 +757,8 @@ void WorldSession::SendListInventory(ObjectGuid vendorGuid)
+         return;
+     }
+ 
++    SetCurrentVendor(vendorEntry);
++
+     uint8 itemCount = items->GetItemCount();
+     uint8 count = 0;
+ 
+diff --git a/src/server/game/Server/WorldSession.cpp b/src/server/game/Server/WorldSession.cpp
+index d6055e9..9cc1076 100644
+--- a/src/server/game/Server/WorldSession.cpp
++++ b/src/server/game/Server/WorldSession.cpp
+@@ -120,6 +120,7 @@ WorldSession::WorldSession(uint32 id, std::shared_ptr<WorldSocket> sock, Account
+     _RBACData(NULL),
+     expireTime(60000), // 1 min after socket loss, session is deleted
+     forceExit(false),
++    m_currentVendorEntry(0),
+     m_currentBankerGUID()
+ {
+     memset(m_Tutorials, 0, sizeof(m_Tutorials));
+diff --git a/src/server/game/Server/WorldSession.h b/src/server/game/Server/WorldSession.h
+index eda8f0b..77a46d5 100644
+--- a/src/server/game/Server/WorldSession.h
++++ b/src/server/game/Server/WorldSession.h
+@@ -286,6 +286,9 @@ class WorldSession
+         std::string const& GetPlayerName() const;
+         std::string GetPlayerInfo() const;
+ 
++        uint32 GetCurrentVendor() const { return m_currentVendorEntry; }
++        void SetCurrentVendor(uint32 vendorEntry) { m_currentVendorEntry = vendorEntry; }
++
+         uint32 GetGuidLow() const;
+         void SetSecurity(AccountTypes security) { _security = security; }
+         std::string const& GetRemoteAddress() { return m_Address; }
+@@ -325,7 +328,7 @@ class WorldSession
+ 
+         void SendTrainerList(ObjectGuid guid);
+         void SendTrainerList(ObjectGuid guid, std::string const& strTitle);
+-        void SendListInventory(ObjectGuid guid);
++        void SendListInventory(ObjectGuid guid, uint32 vendorEntry = 0);
+         void SendShowBank(ObjectGuid guid);
+         bool CanOpenMailBox(ObjectGuid guid);
+         void SendShowMailBox(ObjectGuid guid);
+@@ -1060,6 +1063,7 @@ class WorldSession
+         rbac::RBACData* _RBACData;
+         uint32 expireTime;
+         bool forceExit;
++        uint32 m_currentVendorEntry;
+         ObjectGuid m_currentBankerGUID;
+ 
+         WorldSession(WorldSession const& right) = delete;
+diff --git a/src/server/scripts/Commands/cs_npc.cpp b/src/server/scripts/Commands/cs_npc.cpp
+index 09a41fd..54496a3 100644
+--- a/src/server/scripts/Commands/cs_npc.cpp
++++ b/src/server/scripts/Commands/cs_npc.cpp
+@@ -343,7 +343,8 @@ class npc_commandscript : public CommandScript
+             return false;
+         }
+ 
+-        uint32 vendor_entry = vendor->GetEntry();
++        char* addMulti = strtok(NULL, " ");
++        uint32 vendor_entry = addMulti ? handler->GetSession()->GetCurrentVendor() : vendor ? vendor->GetEntry() : 0;
+ 
+         if (!sObjectMgr->IsVendorItemValid(vendor_entry, itemId, maxcount, incrtime, extendedcost, handler->GetSession()->GetPlayer()))
+         {
+@@ -539,7 +540,8 @@ class npc_commandscript : public CommandScript
+         }
+         uint32 itemId = atoul(pitem);
+ 
+-        if (!sObjectMgr->RemoveVendorItem(vendor->GetEntry(), itemId))
++        char* addMulti = strtok(NULL, " ");
++        if (!sObjectMgr->RemoveVendorItem(addMulti ? handler->GetSession()->GetCurrentVendor() : vendor->GetEntry(), itemId))
+         {
+             handler->PSendSysMessage(LANG_ITEM_NOT_IN_LIST, itemId);
+             handler->SetSentErrorMessage(true);
+diff --git a/src/server/scripts/Custom/Multivendor/MultivendorExample.sql b/src/server/scripts/Custom/Multivendor/MultivendorExample.sql
+new file mode 100644
+index 0000000..ef94f21
+--- /dev/null
++++ b/src/server/scripts/Custom/Multivendor/MultivendorExample.sql
+@@ -0,0 +1,10 @@
++SET @ENTRY = (SELECT max(entry)+1 FROM creature_template);
++SET @MENU_ID = (SELECT max(menu_id)+1 FROM gossip_menu_option);
++
++INSERT INTO `creature_template` (`entry`, `modelid1`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `baseattacktime`, `rangeattacktime`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `trainer_type`, `trainer_spell`, `trainer_class`, `trainer_race`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `InhabitType`, `HoverHeight`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `flags_extra`, `ScriptName`) VALUES
++(@ENTRY, 1298, "Herbert", "MultiVendor", NULL, @MENU_ID, 10, 10, 0, 35, 129, 1, 1.14286, 1, 0, 0, 1500, 0, 1, 512, 2048, 8, 0, 0, 0, 0, 0, 7, 138412032, 0, 0, 0, 0, 0, 0, 0, '', 0, 3, 1, 0, 0, 1, 0, 2, '');
++
++INSERT INTO `gossip_menu_option` (`menu_id`, `id`, `option_icon`, `option_text`, `option_id`, `npc_option_npcflag`, `action_menu_id`, `action_poi_id`, `box_coded`, `box_money`, `box_text`) VALUES
++(@MENU_ID, 0, 4, 'VendorTest 465', 3, 128, 465, 0, 0, 0, ''),
++(@MENU_ID, 1, 9, 'VendorTest 54', 3, 128, 54, 0, 0, 0, ''),
++(@MENU_ID, 2, 6, 'VendorTest 35574', 3, 128, 35574, 0, 0, 100, 'These goods are special, so pay up!');
+diff --git a/src/server/scripts/Custom/Multivendor/README.md b/src/server/scripts/Custom/Multivendor/README.md
+new file mode 100644
+index 0000000..cb752bb
+--- /dev/null
++++ b/src/server/scripts/Custom/Multivendor/README.md
+@@ -0,0 +1,42 @@
++#Multivendor [![Build Status](https://travis-ci.org/Rochet2/TrinityCore.svg?branch=multivendor)](https://travis-ci.org/Rochet2/TrinityCore)
++
++####About
++Allows you to show gossip options that show different vendors from npc_vendor.<br />
++Source: https://rochet2.github.io/?page=Multivendor
++
++####Installation
++
++Available as:
++- Direct merge: https://github.com/Rochet2/TrinityCore/tree/multivendor
++- Diff: https://github.com/Rochet2/TrinityCore/compare/TrinityCore:3.3.5...multivendor.diff
++- Patch: https://github.com/Rochet2/TrinityCore/compare/TrinityCore:3.3.5...multivendor.patch
++
++Using direct merge:
++- open git bash to source location
++- do `git remote add rochet2 https://github.com/Rochet2/TrinityCore.git`
++- do `git pull rochet2 multivendor`
++- use cmake and compile
++
++Using diff:
++- DO NOT COPY THE DIFF DIRECTLY! It causes apply to fail.
++- download the diff by __right clicking__ the link and select __Save link as__
++- place the downloaded `multivendor.diff` to the source root folder
++- open git bash to source location
++- do `git apply multivendor.diff`
++- use cmake and compile
++
++####Usage
++Set your NPC to have gossip and vendor NPCflags (129)<br />
++Add a gossip menu for him and add a new option to it.<br />
++The option needs to have option_id set to 3 so it acts as a vendor button,<br />
++npc_option_npcflag can be 1 or 128 (shows only if the NPC has vendor flag then)<br />
++and the action_menu_id is the vendor entry from npc_vendor that you want to show to the player.<br />
++
++YOU CAN also send menus from C++. All you need to do is to provide the vendor entry to the<br />
++`void WorldSession::SendListInventory(ObjectGuid guid, uint32 vendorEntry)` function.
++
++The npc add item command was modified so you can add items to multivendors as well.<br />
++The last vendor window must have been the multivendor you want to add your item to.<br />
++After opening the window you need to type `.npc add item #itemId <#maxcount><#incrtime><#extendedcost> 1`<br />
++The 1 in the end specifies that you are adding the item to the multivendor currently open.<br />
++Same thing works with `.npc delete item #itemId 1`
