@@ -1,2 +1,3 @@
 # PureCore
+# Em desenvolvimento
 BETA
