@@ -5,14 +5,12 @@
   #  ${sources_Custom}
   )
   
-  message("  -> Prepared: Custom")
---- 13,21 ----
+  
+--- 13,19 ----
   set(scripts_STAT_SRCS
     ${scripts_STAT_SRCS}
   #  ${sources_Custom}
-+     Custom/Transmog/Transmogrification.h
-+     Custom/Transmog/Transmogrification.cpp
-+     Custom/Transmog/Transmogrifier.cpp
++   Custom/ArenaSpectator.cpp
   )
   
-  message("  -> Prepared: Custom")
+  

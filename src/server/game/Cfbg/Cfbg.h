@@ -42,3 +42,21 @@
 #define MSG_COLOR_MAGE         "|cff69ccf0"
 #define MSG_COLOR_PALADIN      "|cfff58cba"
 #define MSG_COLOR_PRIEST       "|cffffffff"
+#define MSG_COLOR_ROGUE        "|cfffff569"
+#define MSG_COLOR_SHAMAN       "|cff0070de"
+#define MSG_COLOR_WARLOCK      "|cff9482c9"
+#define MSG_COLOR_WARRIOR      "|cffc79c6e"
+#define MSG_COLOR_DEATH_KNIGHT "|cffc41f3b"
+#define MSG_COLOR_MONK         "|cff00ff96"
+
+#define LIMIT_UINT32 2147483647
+
+enum FakeMorphs
+{
+       FAKE_F_TAUREN = 20584,
+       FAKE_M_TAUREN = 20585,
+       FAKE_M_NELF = 20318,
+       FAKE_F_DRAENEI = 20323,
+};
+
+#endif

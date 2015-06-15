@@ -17,6 +17,10 @@ set(scripts_STAT_SRCS
     Custom/Transmog/Transmogrification.h
 	Custom/Transmog/Transmogrification.cpp
     Custom/Transmog/Transmogrifier.cpp
+	Custom/ArenaSpectator.cpp
+	Custom/bm.cpp
+	Custom/prof.cpp
+	Custom/trainer.cpp
 )
 
 message("  -> Prepared: Custom")

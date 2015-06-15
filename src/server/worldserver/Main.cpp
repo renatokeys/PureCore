@@ -50,7 +50,6 @@
 #ifdef ELUNA
 #include "LuaEngine.h"
 #endif
-#include "DatabaseLoader.h"
 
 using namespace boost::program_options;
 
@@ -129,9 +128,9 @@ extern int main(int argc, char** argv)
         Log::instance(&_ioService);
     }
 
-    TC_LOG_INFO("server.worldserver", "%s (Daemon)", _FULLVERSION);
-    TC_LOG_INFO("server.worldserver", "<Ctrl-C> para parar.\n");
-    TC_LOG_INFO("server.worldserver", " _________                       ");
+    TC_LOG_INFO("server.worldserver", "%s (worldserver-daemon)", _FULLVERSION);
+    TC_LOG_INFO("server.worldserver", "<Ctrl-C> to stop.\n");
+    TC_LOG_INFO("server.worldserver", " ______                       __");
     TC_LOG_INFO("server.worldserver", "\ \   __  \                                ________");
     TC_LOG_INFO("server.worldserver", " \ \  \__\ \  ____    __    __  _  ______  \ \  ___\  _______  __  _  ______");
     TC_LOG_INFO("server.worldserver", "  \ \  _____\ \ \ \   \ \  /\ \/ \/\   __\  \ \ \__/ /\  __  \/\ \/ \/\   __\");
@@ -315,7 +314,7 @@ void ShutdownCLIThread(std::thread* cliThread)
                 errorBuffer = "Unknown error";
 
             TC_LOG_DEBUG("server.worldserver", "Error cancelling I/O of CliThread, error code %u, detail: %s",
-                uint32(errorCode), errorBuffer);
+                errorCode, errorBuffer);
             LocalFree(errorBuffer);
 
             // send keyboard input to safely unblock the CLI thread
@@ -455,15 +454,80 @@ bool StartDB()
 {
     MySQL::Library_Init();
 
-    // Load databases
-    DatabaseLoader loader("server.worldserver", DatabaseLoader::DATABASE_NONE);
-    loader
-        .AddDatabase(WorldDatabase, "World")
-        .AddDatabase(CharacterDatabase, "Character")
-        .AddDatabase(LoginDatabase, "Login");
+    std::string dbString;
+    uint8 asyncThreads, synchThreads;
 
-    if (!loader.Load())
+    dbString = sConfigMgr->GetStringDefault("WorldDatabaseInfo", "");
+    if (dbString.empty())
+    {
+        TC_LOG_ERROR("server.worldserver", "World database not specified in configuration file");
         return false;
+    }
+
+    asyncThreads = uint8(sConfigMgr->GetIntDefault("WorldDatabase.WorkerThreads", 1));
+    if (asyncThreads < 1 || asyncThreads > 32)
+    {
+        TC_LOG_ERROR("server.worldserver", "World database: invalid number of worker threads specified. "
+            "Please pick a value between 1 and 32.");
+        return false;
+    }
+
+    synchThreads = uint8(sConfigMgr->GetIntDefault("WorldDatabase.SynchThreads", 1));
+    ///- Initialize the world database
+    if (!WorldDatabase.Open(dbString, asyncThreads, synchThreads))
+    {
+        TC_LOG_ERROR("server.worldserver", "Cannot connect to world database %s", dbString.c_str());
+        return false;
+    }
+
+    ///- Get character database info from configuration file
+    dbString = sConfigMgr->GetStringDefault("CharacterDatabaseInfo", "");
+    if (dbString.empty())
+    {
+        TC_LOG_ERROR("server.worldserver", "Character database not specified in configuration file");
+        return false;
+    }
+
+    asyncThreads = uint8(sConfigMgr->GetIntDefault("CharacterDatabase.WorkerThreads", 1));
+    if (asyncThreads < 1 || asyncThreads > 32)
+    {
+        TC_LOG_ERROR("server.worldserver", "Character database: invalid number of worker threads specified. "
+            "Please pick a value between 1 and 32.");
+        return false;
+    }
+
+    synchThreads = uint8(sConfigMgr->GetIntDefault("CharacterDatabase.SynchThreads", 2));
+
+    ///- Initialize the Character database
+    if (!CharacterDatabase.Open(dbString, asyncThreads, synchThreads))
+    {
+        TC_LOG_ERROR("server.worldserver", "Cannot connect to Character database %s", dbString.c_str());
+        return false;
+    }
+
+    ///- Get login database info from configuration file
+    dbString = sConfigMgr->GetStringDefault("LoginDatabaseInfo", "");
+    if (dbString.empty())
+    {
+        TC_LOG_ERROR("server.worldserver", "Login database not specified in configuration file");
+        return false;
+    }
+
+    asyncThreads = uint8(sConfigMgr->GetIntDefault("LoginDatabase.WorkerThreads", 1));
+    if (asyncThreads < 1 || asyncThreads > 32)
+    {
+        TC_LOG_ERROR("server.worldserver", "Login database: invalid number of worker threads specified. "
+            "Please pick a value between 1 and 32.");
+        return false;
+    }
+
+    synchThreads = uint8(sConfigMgr->GetIntDefault("LoginDatabase.SynchThreads", 1));
+    ///- Initialise the login database
+    if (!LoginDatabase.Open(dbString, asyncThreads, synchThreads))
+    {
+        TC_LOG_ERROR("server.worldserver", "Cannot connect to login database %s", dbString.c_str());
+        return false;
+    }
 
     ///- Get the realm Id from the configuration file
     realmID = sConfigMgr->GetIntDefault("RealmID", 0);

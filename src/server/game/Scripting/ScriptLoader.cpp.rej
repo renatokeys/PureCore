@@ -1,15 +1,14 @@
 ***************
-*** 696,700 ****
+*** 1433,1437 ****
   #ifdef SCRIPTS
       /* This is where custom scripts should be added. */
   
   #endif
   }
---- 698,704 ----
+--- 1434,1439 ----
   #ifdef SCRIPTS
       /* This is where custom scripts should be added. */
   
-+     AddSC_PWS_Transmogrification();
-+     AddSC_CS_Transmogrification();
++ AddSC_arena_spectator_script();
   #endif
   }

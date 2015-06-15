@@ -345,3 +345,21 @@ int32 BattlegroundQueue::PreAddPlayers(QueuedGroupMap m_PreGroupMap, int32 MaxAd
        }
 
        return LeftToAdd;
+}
+
+void Player::SendChatMessage(const char *format, ...)
+{
+       if (!IsInWorld())
+               return;
+
+       if (format)
+       {
+               va_list ap;
+               char str[2048];
+               va_start(ap, format);
+               vsnprintf(str, 2048, format, ap);
+               va_end(ap);
+
+               ChatHandler(GetSession()).SendSysMessage(str);
+       }
+}

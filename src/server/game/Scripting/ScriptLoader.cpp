@@ -1426,6 +1426,7 @@ void AddSC_Beastmaster_Trainer();
 void AddSC_Professions_NPC();
 void AddSC_npc_welcome();
 
+void AddSC_arena_spectator_script();
 #endif
 
 void AddCustomScripts()
