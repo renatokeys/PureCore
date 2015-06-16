@@ -1,0 +1,23 @@
+***************
+*** 1145,1153 ****
+  
+          // 1 player is logging out, if it is the last, then end arena!
+          if (isArena())
+-             if (GetAlivePlayersCountByTeam(player->GetBGTeam()) <= 1 && GetPlayersCountByTeam(GetOtherTeam(player->GetBGTeam())))
+-                 EndBattleground(GetOtherTeam(player->GetBGTeam()));
+      }
+  }
+  
+  // This method should be called only once ... it adds pointer to queue
+--- 1161,1171 ----
+  
+          // 1 player is logging out, if it is the last, then end arena!
+          if (isArena())
++             if (GetAlivePlayersCountByTeam(player->GetTeam()) <= 1 && GetPlayersCountByTeam(GetOtherTeam(player->GetTeam())))
++                 EndBattleground(GetOtherTeam(player->GetTeam()));
+      }
++ 
++     player->LeaveBattleground();
+  }
+  
+  // This method should be called only once ... it adds pointer to queue
