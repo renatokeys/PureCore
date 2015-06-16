@@ -93,6 +93,7 @@ void AddSC_npc_taxi();
 void AddSC_achievement_scripts();
 void AddSC_action_ip_logger();
 
+/* 
 //eastern kingdoms
 void AddSC_alterac_valley();                 //Alterac Valley
 void AddSC_boss_balinda();
@@ -666,6 +667,7 @@ void AddSC_zangarmarsh();
 
 // Events
 void AddSC_event_childrens_week();
+*/
 
 // Pets
 void AddSC_deathknight_pet_scripts();
@@ -794,10 +796,11 @@ void AddWorldScripts()
         AddSC_action_ip_logger(); // location: scripts\World\action_ip_logger.cpp
 #endif
 }
-
+/*
 void AddEasternKingdomsScripts()
 {
 #ifdef SCRIPTS
+
     AddSC_alterac_valley();                 //Alterac Valley
     AddSC_boss_balinda();
     AddSC_boss_drekthar();
@@ -1379,7 +1382,7 @@ void AddNorthrendScripts()
     AddSC_isle_of_conquest();
 #endif
 }
-
+*/
 void AddEventScripts()
 {
 #ifdef SCRIPTS

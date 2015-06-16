@@ -1,14 +1,30 @@
 ***************
-*** 1433,1437 ****
+*** 1418,1423 ****
+  #ifdef SCRIPTS
+  /* This is where custom scripts' loading functions should be declared. */
+  
+  #endif
+  
+  void AddCustomScripts()
+--- 1418,1424 ----
+  #ifdef SCRIPTS
+  /* This is where custom scripts' loading functions should be declared. */
+  
++ void AddSC_REFORGER_NPC();
+  #endif
+  
+  void AddCustomScripts()
+***************
+*** 1425,1429 ****
   #ifdef SCRIPTS
       /* This is where custom scripts should be added. */
   
   #endif
   }
---- 1434,1439 ----
+--- 1426,1431 ----
   #ifdef SCRIPTS
       /* This is where custom scripts should be added. */
   
-+ AddSC_arena_spectator_script();
++     AddSC_REFORGER_NPC();
   #endif
   }
