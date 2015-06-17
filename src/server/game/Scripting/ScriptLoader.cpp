@@ -1382,13 +1382,14 @@ void AddNorthrendScripts()
     AddSC_isle_of_conquest();
 #endif
 }
-*/
+
 void AddEventScripts()
 {
 #ifdef SCRIPTS
     AddSC_event_childrens_week();
 #endif
 }
+*/
 
 void AddPetScripts()
 {
